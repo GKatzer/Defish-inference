@@ -1,0 +1,56 @@
+docker compose up --build of this repository, 2026-10-05, two runs.
+Docker 29.8.1, Compose 5.5.1, Linux x86-64. Build directory: a copy of exactly what a commit contains, plus the real model files in models/
+(they are not in the repository) and a .env with the template values (TAILSCALE_IP=127.0.0.1, ML_PORT=<free port>, rate_limit_requests=1000).
+
+##### Run 1: from nothing, no .dockerignore (the python:3.12-slim image and every pip package were downloaded by this build)
+
+$ docker compose config -q
+(no output: valid)
+
+$ time docker compose up -d --build
+ ... Network ..._ml-network Created
+ ... Container ml-inference-service Created
+ ... Container ml-inference-service Started
+real	1m35.291s
+
+$ docker image ls --format '{{.Repository}}:{{.Tag}} {{.Size}}'
+<project>-ml-service:latest 1.64GB          (the 391 MB of model files in the build directory were copied into the image: COPY . . with no .dockerignore)
+
+$ curl -s http://127.0.0.1:<port>/health
+{"status":"healthy","service":"ml-inference","version":"1.0.0","detector":"loaded","classifier":"loaded"}
+
+$ docker compose logs --no-log-prefix ml-service        (excerpt)
+INFO:     Will watch for changes in these directories: ['/app']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [1] using StatReload
+... main - INFO - Starting ML Service...
+... main - INFO - Detector loaded successfully
+... main - INFO - Load ONNX classifier model...
+Class names: ['dermatomycosis', 'fin_rot', 'healthy', 'hexamitosis', 'mycobacteriosis', 'oodiniosis', 'plistophorosis']
+Confidence threshold (below this -> uncertain): 0.83
+
+POST /analyze of planted-tank-tetras.jpg through the container (base64 JSON, as in the README), compared with a native run of the same code:
+11 fish in 3907 ms; the same classes, confidences (to 4 decimals) and `uncertain` flags: True
+
+$ docker compose down --rmi local   (stack and image removed)
+
+##### Run 2: after adding a .dockerignore (.env, .venv, models, tests, docs, .git, ...); the layer cache of run 1 was still there
+
+$ time docker compose up -d --build
+real	0m6.257s
+
+$ docker image ls --format '{{.Repository}}:{{.Tag}} {{.Size}}'
+<project>-ml-service:latest 878MB
+
+$ docker run --rm --entrypoint sh <project>-ml-service -c 'ls -A /app; ls -A /app/models | wc -l; test -e /app/.env ...'     (the image itself, without the compose bind mounts)
+.dockerignore .gitignore Dockerfile LICENSE README.md api core docker-compose.yml env-example.txt inference main.py models pytest.ini requirements-dev.txt requirements.txt temp utils
+0 files in /app/models
+no .env in the image
+
+$ curl -s http://127.0.0.1:<port>/health        (container started by compose, which mounts the checkout and models over /app)
+{"status":"healthy","service":"ml-inference","version":"1.0.0","detector":"loaded","classifier":"loaded"}
+
+POST /analyze of planted-tank-tetras.jpg through the container, compared with the native run of the current code:
+11 fish in 3231 ms; the same classes, confidences (to 4 decimals) and `uncertain` flags: True
+
+$ docker compose down --rmi local   (stack and image removed)

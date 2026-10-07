@@ -1,0 +1,13 @@
+# Keep secrets, weights and development files out of the image (docker-compose.yml mounts the checkout over /app anyway)
+.env
+.venv
+venv
+.git
+__pycache__
+*.pyc
+.pytest_cache
+models
+tests
+docs
+logs
+temp

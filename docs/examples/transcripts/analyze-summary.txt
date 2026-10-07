@@ -1,0 +1,13 @@
+What POST /analyze says about each of the four public photos (docs/examples/analyze_summary.py), one request per photo, real models.
+Recorded 2026-10-05 on Linux x86-64 (AMD Ryzen 7 7435HS, 16 threads), Python 3.12.3, fastapi 0.121.2, onnxruntime 1.23.2,
+opencv-python-headless 4.12.0.88, pillow 12.0.0, numpy 2.2.6, uvicorn 0.38.0, one uvicorn process, client on the same machine.
+Detector and classifier: the REAL files (models/best.onnx and models/disease_classifier/*), kept outside the repository.
+Code state: Pillow bicubic crop resize, one embedder call per crop (the changes of 2026-10-05).
+'ms' is the wall-clock time of that one request (detector + classifier + JSON). The number in brackets after a class is how many of those fish were flagged uncertain.
+There is no ground truth: the true condition of these fish is not known, so this table shows what the model says, not whether it is right.
+
+photo                               fish     ms  uncertain   classes (count, how many of them uncertain)
+cardinal-tetra-school.jpg             29   5405         15   healthy 25 (11), plistophorosis 2 (2), mycobacteriosis 2 (2)
+endler-guppies-dense-shoal.jpg        46  12478         31   mycobacteriosis 26 (18), healthy 13 (6), plistophorosis 5 (5), dermatomycosis 1 (1), oodiniosis 1 (1)
+guppies-planted-tank.jpg               0    276          0   
+planted-tank-tetras.jpg               11   3194          3   healthy 10 (3), mycobacteriosis 1 (0)

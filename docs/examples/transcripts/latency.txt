@@ -1,0 +1,13 @@
+POST /detect wall-clock time per photo (docs/examples/measure_latency.py), real detector, 960x960 letterbox, CPU, onnxruntime default threads.
+Recorded 2026-10-04 on Linux x86-64 (AMD Ryzen 7 7435HS, 16 threads), Python 3.12.3, fastapi 0.121.2, onnxruntime 1.23.2,
+opencv-python-headless 4.12.0.88, numpy 2.2.6, uvicorn 0.38.0, one uvicorn process, client on the same machine.
+Detector: the real detector file models/best.onnx (kept outside the repository). Classifier: STAND-IN files from docs/examples/make_standin_models.py, so every class name,
+confidence and `uncertain` value below is meaningless (it depends on the average colour of a crop); boxes and detector scores are real.
+Service started with RATE_LIMIT_REQUESTS=1000. Time = request to answer, including JPEG decoding, drawing, re-encoding and base64.
+The classifier is not part of /detect and was not timed (no real classifier weights on this machine).
+
+photo                                      size  fish   median     min     max   (ms, 10 runs after 1 warm-up)
+cardinal-tetra-school.jpg               801x686    29      264     259     270
+endler-guppies-dense-shoal.jpg        1600x1200    46      290     284     299
+guppies-planted-tank.jpg              1600x1200     0      278     276     283
+planted-tank-tetras.jpg               1600x1229    11      282     279     314

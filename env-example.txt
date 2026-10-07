@@ -1,0 +1,26 @@
+# Copy to .env (the repository ignores .env). Names are case-insensitive for the application;
+# docker-compose.yml substitutes the ones marked "compose" with exactly this spelling.
+
+# Required by the settings model, never used for inference (any non-empty text works).
+vds1_ip=not-used
+# compose: only goes into a VDS1_URL variable inside the container, which no code reads.
+vds1_port=8000
+
+# compose: address and port on the host that the container's port 8000 is published on
+# (127.0.0.1 for local use; a private-network address in a real deployment). Both are required by docker-compose.yml.
+TAILSCALE_IP=127.0.0.1
+ML_PORT=8000
+
+# Rate limit per client IP, in memory of each process: at most N requests in S seconds, counted for /detect and /analyze.
+# The defaults are below (one request a second on average); /health and /model-status are not limited.
+#rate_limit_requests=60
+#rate_limit_window=60
+
+# Classifier speed, for slow CPUs (see "Configuration" in the README). Read at start-up; the defaults are below.
+# CLASSIFIER_TTA=0 skips the mirror-image pass: about twice as fast, but confidences and some `uncertain` flags change.
+# CLASSIFIER_CHUNK_SIZE is the number of crops per embedder call (0 = all in one call); it did not change the speed on a 2-core VDS.
+#classifier_tta=true
+#classifier_chunk_size=1
+
+# Accepted by the settings model but not read anywhere else in the code (see "Configuration" in the README):
+# ml_service_port, model_path, ensemble_models, ensemble_weights, workers, batch_size, max_concurrent_requests, request_timeout.

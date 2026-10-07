@@ -1,0 +1,20 @@
+.venv/
+.env
+freeze.txt
+__pycache__/
+
+*.jpg
+*.webp
+# example photos and README media are tracked
+!docs/examples/photos/*.jpg
+!docs/media/*.jpg
+
+*.pt
+*.onnx
+*.onnx.data
+*.npz
+
+.log
+logs/
+
+models/

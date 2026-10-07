@@ -1,0 +1,14 @@
+GET /health latency while 8 requests are being processed (docs/examples/health_under_load.py), one uvicorn process.
+Recorded 2026-10-05 on Linux x86-64 (AMD Ryzen 7 7435HS, 16 threads), Python 3.12.3, fastapi 0.121.2, onnxruntime 1.23.2,
+opencv-python-headless 4.12.0.88, pillow 12.0.0, numpy 2.2.6, uvicorn 0.38.0, one uvicorn process, client on the same machine.
+Detector and classifier: the REAL files (models/best.onnx and models/disease_classifier/*), kept outside the repository.
+Code state: Pillow bicubic crop resize, one embedder call per crop (the changes of 2026-10-05).
+Service started with RATE_LIMIT_REQUESTS=1000.
+
+$ python docs/examples/health_under_load.py http://127.0.0.1:8000 docs/examples/photos/planted-tank-tetras.jpg detect
+/health while idle:                    median     2.0 ms, max     2.4 ms (80 calls)
+/health during 8 concurrent /detect: median   256.6 ms, max  1814.0 ms (3 calls)
+
+$ python docs/examples/health_under_load.py http://127.0.0.1:8000 docs/examples/photos/planted-tank-tetras.jpg analyze
+/health while idle:                    median     2.0 ms, max     2.3 ms (80 calls)
+/health during 8 concurrent /analyze: median     9.5 ms, max   177.3 ms (1214 calls)

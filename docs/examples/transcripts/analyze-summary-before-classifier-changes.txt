@@ -1,0 +1,10 @@
+What POST /analyze said about each of the four public photos BEFORE the two classifier changes of 2026-10-05
+(crop resize by OpenCV's cubic interpolation, one embedder call for all crops), real models, one request per photo.
+Kept for comparison with analyze-summary.txt. recorded 2026-10-05 on Linux x86-64 (AMD Ryzen 7 7435HS, 16 threads), Python 3.12.3, fastapi 0.121.2, onnxruntime 1.23.2,
+The true condition of these fish is not known.
+
+photo                               fish     ms  uncertain   classes (count, how many of them uncertain)
+cardinal-tetra-school.jpg             29  11498         15   healthy 25 (11), plistophorosis 2 (2), mycobacteriosis 2 (2)
+endler-guppies-dense-shoal.jpg        46  18826         29   mycobacteriosis 25 (15), healthy 14 (7), plistophorosis 5 (5), oodiniosis 2 (2)
+guppies-planted-tank.jpg               0    271          0   
+planted-tank-tetras.jpg               11   4271          3   healthy 10 (3), mycobacteriosis 1 (0)

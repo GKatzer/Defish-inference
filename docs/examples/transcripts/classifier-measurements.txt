@@ -1,0 +1,60 @@
+Classifier measurements (docs/examples/measure_classifier.py), real models, crops found by the real detector and cut from the original photos as /analyze does.
+Recorded 2026-10-05 on an AMD Ryzen 7 7435HS (16 threads), onnxruntime 1.23.2, Python 3.12.3. Timings vary by up to about 30 % between runs on this machine.
+Code state: Pillow bicubic crop resize, one embedder call per crop (the changes of 2026-10-05). The script keeps the PREVIOUS ways as options, so the
+before/after comparison is reproducible without the old code: 'one call' = one embedder call for all crops (the previous implementation),
+--opencv-resize = the previous crop resize.
+
+##### 1. Current way (one call per crop) against the previous way (one call for all crops); three thread settings
+'per crop ms' = predict_batch(all crops) of the current code (median of 3 runs); 'one call ms' = the previous implementation; 'same label' and 'max |dconf|' compare the two.
+Threads: ONNX Runtime's default (16 here), then 8, then 4 (--threads).
+
+$ python docs/examples/measure_classifier.py docs/examples/photos/*.jpg 
+photo                              crops  per crop ms  one call ms  one call / per crop  same label  max |dconf|
+cardinal-tetra-school.jpg             29         7616        11430                 1.50       29/29     1.14e-07
+endler-guppies-dense-shoal.jpg        46        12090        18365                 1.52       46/46     1.76e-07
+guppies-planted-tank.jpg               0   (no fish found, nothing to classify)
+planted-tank-tetras.jpg               11         2913         3920                 1.35       11/11     8.50e-08
+
+$ python docs/examples/measure_classifier.py docs/examples/photos/*.jpg --threads 8
+photo                              crops  per crop ms  one call ms  one call / per crop  same label  max |dconf|
+cardinal-tetra-school.jpg             29         5176         9517                 1.84       29/29     1.14e-07
+endler-guppies-dense-shoal.jpg        46         8239        15376                 1.87       46/46     1.76e-07
+guppies-planted-tank.jpg               0   (no fish found, nothing to classify)
+planted-tank-tetras.jpg               11         1967         3071                 1.56       11/11     8.50e-08
+
+$ python docs/examples/measure_classifier.py docs/examples/photos/*.jpg --threads 4
+photo                              crops  per crop ms  one call ms  one call / per crop  same label  max |dconf|
+cardinal-tetra-school.jpg             29         7602        11147                 1.47       29/29     1.14e-07
+endler-guppies-dense-shoal.jpg        46        12058        17668                 1.47       46/46     1.76e-07
+guppies-planted-tank.jpg               0   (no fish found, nothing to classify)
+planted-tank-tetras.jpg               11         2880         3769                 1.31       11/11     8.50e-08
+
+##### 2. Cost per image against batch size, embedder alone
+
+$ python docs/examples/measure_classifier.py docs/examples/photos/endler-guppies-dense-shoal.jpg --scan
+embedder alone on real crops of endler-guppies-dense-shoal.jpg (median of 3 runs after a warm-up):
+  batch of  1 images:     131 ms =   131 ms per image
+  batch of  2 images:     263 ms =   131 ms per image
+  batch of  4 images:     568 ms =   142 ms per image
+  batch of  8 images:    1248 ms =   156 ms per image
+  batch of 16 images:    2706 ms =   169 ms per image
+  batch of 32 images:    6104 ms =   191 ms per image
+
+##### 3. Against the reference runtime of Defish-ML-train (experiments/classifier/infer_onnx.py: Pillow bicubic resize, original and mirror image as two calls)
+'ref same label' = crops whose label equals the reference's; 'ref max |dconf|' = largest difference in the confidence of the label; 'ref flips gate' = crops whose `uncertain` flag differs.
+
+Current code (Pillow resize):
+$ python docs/examples/measure_classifier.py docs/examples/photos/*.jpg --reference <Defish-ML-train>/experiments/classifier/infer_onnx.py
+photo                              crops  per crop ms  one call ms  one call / per crop  same label  max |dconf|  ref same label  ref max |dconf|  ref flips gate
+cardinal-tetra-school.jpg             29         7996        11241                 1.41       29/29     1.14e-07           29/29         9.88e-08               0
+endler-guppies-dense-shoal.jpg        46        12569        17948                 1.43       46/46     1.76e-07           46/46         1.08e-07               0
+guppies-planted-tank.jpg               0   (no fish found, nothing to classify)
+planted-tank-tetras.jpg               11         2085         3324                 1.59       11/11     8.50e-08           11/11         2.65e-08               0
+
+The previous crop resize (OpenCV's cubic interpolation), put back with --opencv-resize:
+$ python docs/examples/measure_classifier.py docs/examples/photos/*.jpg --reference <Defish-ML-train>/experiments/classifier/infer_onnx.py --opencv-resize
+photo                              crops  per crop ms  one call ms  one call / per crop  same label  max |dconf|  ref same label  ref max |dconf|  ref flips gate
+cardinal-tetra-school.jpg             29         7198        10615                 1.47       29/29     1.40e-07           29/29         1.14e-01               0
+endler-guppies-dense-shoal.jpg        46        12138        18265                 1.50       46/46     1.83e-07           41/46         1.20e-01               4
+guppies-planted-tank.jpg               0   (no fish found, nothing to classify)
+planted-tank-tetras.jpg               11         2909         3932                 1.35       11/11     2.59e-08           11/11         5.27e-02               0

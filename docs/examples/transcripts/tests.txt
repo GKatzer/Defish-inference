@@ -1,0 +1,94 @@
+Test run of the suite in a clean copy of the repository's contents (docs/ and tests/ included, no model files, .env absent), 2026-10-05,
+Python 3.12.3, pytest 9.1.1, fastapi 0.121.2, onnxruntime 1.23.2, onnx 1.23.1, numpy 2.2.6, pillow 12.0.0; installed with
+`uv venv && uv pip install -r requirements-dev.txt`, run with `.venv/bin/python -m pytest -v`.
+The tests use stand-in models (docs/examples/make_standin_models.py); they need no weights.
+
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0 -- <repo>/.venv/bin/python
+rootdir: <repo>
+configfile: pytest.ini
+testpaths: tests
+plugins: anyio-4.15.1
+collecting ... collected 69 items
+
+tests/test_api.py::test_health_when_both_models_are_loaded PASSED        [  1%]
+tests/test_api.py::test_model_status_names_the_loaded_classes PASSED     [  2%]
+tests/test_api.py::test_root_and_test_endpoints PASSED                   [  4%]
+tests/test_api.py::test_missing_classifier_files_leave_the_detector_loaded PASSED [  5%]
+tests/test_api.py::test_missing_detector_file_leaves_the_classifier_loaded PASSED [  7%]
+tests/test_api.py::test_nothing_loaded PASSED                            [  8%]
+tests/test_api.py::test_models_are_released_on_shutdown PASSED           [ 10%]
+tests/test_api.py::test_detect_returns_boxes_in_original_coordinates PASSED [ 11%]
+tests/test_api.py::test_detect_works_without_the_classifier PASSED       [ 13%]
+tests/test_api.py::test_detect_result_image_keeps_the_colours PASSED     [ 14%]
+tests/test_api.py::test_detect_does_not_write_the_result_to_disk PASSED  [ 15%]
+tests/test_api.py::test_detect_rejects_a_file_that_is_not_an_image_type PASSED [ 17%]
+tests/test_api.py::test_detect_answers_400_for_bytes_that_do_not_decode PASSED [ 18%]
+tests/test_api.py::test_detect_answers_400_for_an_empty_file PASSED      [ 20%]
+tests/test_api.py::test_detect_requires_the_image_field PASSED           [ 21%]
+tests/test_api.py::test_analyze_returns_one_result_per_croppable_box PASSED [ 23%]
+tests/test_api.py::test_analyze_returns_the_original_picture_reencoded PASSED [ 24%]
+tests/test_api.py::test_analyze_with_no_fish PASSED                      [ 26%]
+tests/test_api.py::test_analyze_gate_flag_reaches_the_answer PASSED      [ 27%]
+tests/test_api.py::test_analyze_bad_input_is_400[body0-json] PASSED      [ 28%]
+tests/test_api.py::test_analyze_bad_input_is_400[body1-json] PASSED      [ 30%]
+tests/test_api.py::test_analyze_bad_input_is_400[body2-json] PASSED      [ 31%]
+tests/test_api.py::test_analyze_bad_input_is_400[body3-json] PASSED      [ 33%]
+tests/test_api.py::test_analyze_bad_input_is_400[body4-decode] PASSED    [ 34%]
+tests/test_api.py::test_analyze_bad_input_is_400[body5-decode] PASSED    [ 36%]
+tests/test_api.py::test_analyze_body_that_is_not_json_is_400 PASSED      [ 37%]
+tests/test_api.py::test_analyze_without_the_classifier_is_500_with_the_reason PASSED [ 39%]
+tests/test_api.py::test_analyze_without_the_detector_is_500_with_the_reason PASSED [ 40%]
+tests/test_api.py::test_internal_errors_do_not_leak_exception_text PASSED [ 42%]
+tests/test_api.py::test_analyze_times_out_with_408 PASSED                [ 43%]
+tests/test_api.py::test_the_61st_request_in_a_minute_is_refused_by_default PASSED [ 44%]
+tests/test_api.py::test_the_limit_applies_to_detect_and_analyze_together PASSED [ 46%]
+tests/test_api.py::test_health_is_not_rate_limited PASSED                [ 47%]
+tests/test_classifier.py::test_batch_equals_one_by_one PASSED            [ 49%]
+tests/test_classifier.py::test_empty_batch PASSED                        [ 50%]
+tests/test_classifier.py::test_result_fields_and_top3 PASSED             [ 52%]
+tests/test_classifier.py::test_confidences_are_probabilities PASSED      [ 53%]
+tests/test_classifier.py::test_gate_follows_the_threshold[0.0-False] PASSED [ 55%]
+tests/test_classifier.py::test_gate_follows_the_threshold[1.01-True] PASSED [ 56%]
+tests/test_classifier.py::test_gate_is_strictly_below_the_threshold PASSED [ 57%]
+tests/test_classifier.py::test_mirrored_crop_gives_the_same_answer PASSED [ 59%]
+tests/test_classifier.py::test_preprocess_pads_to_a_square_with_the_neutral_colour PASSED [ 60%]
+tests/test_classifier.py::test_load_classifier_fails_without_the_files PASSED [ 62%]
+tests/test_classifier.py::test_crop_resize_is_pillows_bicubic_as_in_training PASSED [ 63%]
+tests/test_classifier.py::test_embedder_runs_once_per_crop_on_the_crop_and_its_mirror_image PASSED [ 65%]
+tests/test_detector.py::test_confidence_threshold_and_nms PASSED         [ 66%]
+tests/test_detector.py::test_boxes_are_mapped_back_to_the_original_resolution PASSED [ 68%]
+tests/test_detector.py::test_box_in_the_padding_collapses_to_a_line PASSED [ 69%]
+tests/test_detector.py::test_result_format PASSED                        [ 71%]
+tests/test_detector.py::test_no_detection_above_threshold PASSED         [ 72%]
+tests/test_detector.py::test_load_detector_fails_without_the_file PASSED [ 73%]
+tests/test_img.py::test_letterbox_is_square_and_keeps_proportions PASSED [ 75%]
+tests/test_img.py::test_letterbox_pads_with_white_and_keeps_picture_in_the_middle PASSED [ 76%]
+tests/test_img.py::test_letterbox_portrait_offsets_x PASSED              [ 78%]
+tests/test_img.py::test_unletterbox_inverts_letterbox[shape0] PASSED     [ 79%]
+tests/test_img.py::test_unletterbox_inverts_letterbox[shape1] PASSED     [ 81%]
+tests/test_img.py::test_unletterbox_inverts_letterbox[shape2] PASSED     [ 82%]
+tests/test_img.py::test_unletterbox_inverts_letterbox[shape3] PASSED     [ 84%]
+tests/test_img.py::test_unletterbox_clips_to_the_original_picture PASSED [ 85%]
+tests/test_img.py::test_crop_by_bbox_cuts_and_clips PASSED               [ 86%]
+tests/test_img.py::test_encode_image_to_base64_keeps_colours PASSED      [ 88%]
+tests/test_img.py::test_encode_image_to_base64_returns_none_on_bad_input PASSED [ 89%]
+tests/test_rate_limiter.py::test_refuses_the_request_over_the_limit_with_retry_after PASSED [ 91%]
+tests/test_rate_limiter.py::test_clients_are_counted_separately PASSED   [ 92%]
+tests/test_rate_limiter.py::test_window_slides PASSED                    [ 94%]
+tests/test_rate_limiter.py::test_defaults_are_sixty_per_minute PASSED    [ 95%]
+tests/test_rate_limiter.py::test_limits_come_from_the_environment PASSED [ 97%]
+tests/test_rate_limiter.py::test_the_global_limiter_is_built_from_the_settings PASSED [ 98%]
+tests/test_rate_limiter.py::test_the_global_limiter_follows_the_environment PASSED [100%]
+
+=============================== warnings summary ===============================
+core/config.py:6
+  <repo>/core/config.py:6: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class Settings(BaseSettings):
+
+tests/test_api.py::test_health_when_both_models_are_loaded
+  <repo>/.venv/lib/python3.12/site-packages/starlette/testclient.py:51: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 69 passed, 2 warnings in 1.81s ========================

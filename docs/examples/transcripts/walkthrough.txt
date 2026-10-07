@@ -1,0 +1,65 @@
+Every endpoint once with curl (docs/examples/walkthrough.sh). Floats rounded to 3 decimals and base64 cut by pretty.py.
+Recorded 2026-10-05 on Linux x86-64 (AMD Ryzen 7 7435HS, 16 threads), Python 3.12.3, fastapi 0.121.2, onnxruntime 1.23.2,
+opencv-python-headless 4.12.0.88, pillow 12.0.0, numpy 2.2.6, uvicorn 0.38.0, one uvicorn process, client on the same machine.
+Detector and classifier: the REAL files (models/best.onnx and models/disease_classifier/*), kept outside the repository.
+Code state: Pillow bicubic crop resize, one embedder call per crop (the changes of 2026-10-05).
+Service started with RATE_LIMIT_REQUESTS=1000. The classes are real model output; the true condition of the fish in the photo is not known.
+
+$ curl -s http://127.0.0.1:8000/health
+{
+  "status": "healthy",
+  "service": "ml-inference",
+  "version": "1.0.0",
+  "detector": "loaded",
+  "classifier": "loaded"
+}
+
+$ curl -s http://127.0.0.1:8000/model-status
+{
+  "detector": {"loaded": true, "type": "YOLO_ONNX_Inference"},
+  "classifier": {"loaded": true, "type": "DinoV2Classifier"}
+}
+
+$ curl -s -F image=@docs/examples/photos/planted-tank-tetras.jpg http://127.0.0.1:8000/detect
+{
+  "status": "success",
+  "count": 11,
+  "detections": [
+    {"bbox": [848.647, 695.816, 969.477, 774.979], "confidence": 0.896, "class_id": 0},
+    {"bbox": [716.384, 631.518, 804.316, 670.279], "confidence": 0.832, "class_id": 0},
+    "... 9 more"
+  ],
+  "result_image_b64": "/9j/4AAQSkZJRgABAQAAAQAB...",
+  "message": "Found 11 objects"
+}
+
+$ printf '{"image_bytes":"%s"}' "$(base64 -w0 docs/examples/photos/planted-tank-tetras.jpg)" | curl -s -H "Content-Type: application/json" -d @- http://127.0.0.1:8000/analyze
+{
+  "detections": [
+    {
+      "bbox": [848.647, 695.816, 969.477, 774.979],
+      "det_confidence": 0.896,
+      "class": "healthy",
+      "class_confidence": 0.999,
+      "uncertain": false,
+      "top3": [
+        {"label": "healthy", "confidence": 0.999},
+        {"label": "fin_rot", "confidence": 0.0},
+        {"label": "oodiniosis", "confidence": 0.0}
+      ]
+    },
+    "... 10 more"
+  ],
+  "image": "/9j/4AAQSkZJRgABAQAAAQAB...",
+  "image_width": 1600,
+  "image_height": 1229
+}
+
+$ curl -s -w "  [HTTP %{http_code}]\n" -H "Content-Type: application/json" -d "{}" http://127.0.0.1:8000/analyze
+{"detail":"Body must be JSON with a base64 string in 'image_bytes'"}  [HTTP 400]
+
+$ curl -s -w "  [HTTP %{http_code}]\n" -F image=@README.md http://127.0.0.1:8000/detect
+{"detail":"Uploaded file must be an image"}  [HTTP 400]
+
+$ curl -s -w "  [HTTP %{http_code}]\n" -X POST http://127.0.0.1:8000/detect
+{"detail":[{"type":"missing","loc":["body","image"],"msg":"Field required","input":null}]}  [HTTP 422]

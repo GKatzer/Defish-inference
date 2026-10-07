@@ -1,0 +1,102 @@
+Behaviour of the service before and after the code changes made with this documentation round (see docs/design-decisions.md, section 'Changes made').
+Each group below was run with docs/examples/probe_service.py against a freshly started service. The original code has a fixed limit of 5 requests per 60 s
+(probe run with `limiter --limit 5`); the current default is 60 (`limiter`, which sends 62 requests).
+Recorded 2026-10-04 on Linux x86-64 (AMD Ryzen 7 7435HS, 16 threads), Python 3.12.3, fastapi 0.121.2, onnxruntime 1.23.2,
+opencv-python-headless 4.12.0.88, numpy 2.2.6, uvicorn 0.38.0, one uvicorn process, client on the same machine.
+Detector: the real detector file models/best.onnx (kept outside the repository). Classifier: STAND-IN files from docs/examples/make_standin_models.py, so every class name,
+confidence and `uncertain` value below is meaningless (it depends on the average colour of a crop); boxes and detector scores are real.
+
+##### A. Classifier files missing (models/disease_classifier/ has meta.json only)
+
+=== BEFORE
+--- health
+GET /health
+  HTTP 200  {"status":"healthy","service":"ml-inference","version":"1.0.0","detector":"failed","classifier":"failed"}
+GET /model-status
+  HTTP 200  {"detector":{"loaded":false,"type":null},"classifier":{"loaded":false,"type":null}}
+(log of the original code: 'Failed to load detector' twice, one of them for the classifier; /health still says healthy)
+
+=== AFTER
+--- health
+GET /health
+  HTTP 200  {"status":"degraded","service":"ml-inference","version":"1.0.0","detector":"loaded","classifier":"failed"}
+GET /model-status
+  HTTP 200  {"detector":{"loaded":true,"type":"YOLO_ONNX_Inference"},"classifier":{"loaded":false,"type":null}}
+POST /detect  cardinal-tetra-school.jpg, classifier missing
+  HTTP 200  status=success count=29 message='Found 29 objects'
+POST /analyze cardinal-tetra-school.jpg, classifier missing
+  HTTP 500  {"detail":"Classifier model not loaded"}
+(these two requests were not sent to the BEFORE service: it reported its detector as failed too)
+
+##### B. Everything present
+
+=== BEFORE
+--- health
+GET /health
+  HTTP 200  {"status":"healthy","service":"ml-inference","version":"1.0.0","detector":"loaded","classifier":"loaded"}
+GET /model-status
+  HTTP 200  {"detector":{"loaded":true,"type":"YOLO_ONNX_Inference"},"classifier":{"loaded":true,"type":"DinoV2Classifier"}}
+--- bad-input
+POST /analyze  body {}
+  HTTP 500  Internal Server Error
+POST /analyze  body 'not json'
+  HTTP 500  Internal Server Error
+POST /analyze  image_bytes = base64 of text
+  HTTP 500  {"detail":"Detection failed: 400: Cannot decode image"}
+POST /detect   file of type image/jpeg containing text
+  HTTP 500  {"detail":"Detection failed: 400: Cannot decode image"}
+--- colours
+POST /detect  solid red picture
+  HTTP 200  count=0  keys=['count', 'detections', 'message', 'result_image_b64', 'status']
+  centre pixel of result_image_b64 decoded as BGR: (254, 0, 0)  ->  colours swapped
+  /tmp/api_detection_result.jpg exists, modified 0 s ago (request started 0 s ago)
+--- photo
+POST /detect  cardinal-tetra-school.jpg
+  HTTP 200  count=29  first=[{'bbox': [4.783123183250427, 81.90739660263061, 96.60053715705871, 114.29213647842407], 'confidence': 0.8522974848747253, 'class_id': 0}]
+POST /analyze cardinal-tetra-school.jpg
+  HTTP 200  detections=29  size=801x686
+    {"bbox": [4.783123183250427, 81.90739660263061, 96.60053715705871, 114.29213647842407], "det_confidence": 0.852, "class": "mycobacteriosis", "class_confidence": 0.842, "uncertain": false}
+    {"bbox": [0.0, 294.1356227874756, 62.36236975193024, 330.33336067199707], "det_confidence": 0.851, "class": "mycobacteriosis", "class_confidence": 0.831, "uncertain": false}
+--- limiter
+7 x POST /analyze  body {}
+  statuses: 5 x 500, then 2 x 429
+  first refusal: {"detail":{"error":"Too many requests","retry_after":59,"limit":5,"window":60}}
+
+=== AFTER
+--- health
+GET /health
+  HTTP 200  {"status":"healthy","service":"ml-inference","version":"1.0.0","detector":"loaded","classifier":"loaded"}
+GET /model-status
+  HTTP 200  {"detector":{"loaded":true,"type":"YOLO_ONNX_Inference"},"classifier":{"loaded":true,"type":"DinoV2Classifier"}}
+--- bad-input
+POST /analyze  body {}
+  HTTP 400  {"detail":"Body must be JSON with a base64 string in 'image_bytes'"}
+POST /analyze  body 'not json'
+  HTTP 400  {"detail":"Body must be JSON with a base64 string in 'image_bytes'"}
+POST /analyze  image_bytes = base64 of text
+  HTTP 400  {"detail":"Cannot decode image"}
+POST /detect   file of type image/jpeg containing text
+  HTTP 400  {"detail":"Cannot decode image"}
+--- colours
+POST /detect  solid red picture
+  HTTP 200  count=0  keys=['count', 'detections', 'message', 'result_image_b64', 'status']
+  centre pixel of result_image_b64 decoded as BGR: (0, 0, 254)  ->  red, as sent
+  /tmp/api_detection_result.jpg does not exist
+--- photo
+POST /detect  cardinal-tetra-school.jpg
+  HTTP 200  count=29  first=[{'bbox': [4.783123183250427, 81.90739660263061, 96.60053715705871, 114.29213647842407], 'confidence': 0.8522974848747253, 'class_id': 0}]
+POST /analyze cardinal-tetra-school.jpg
+  HTTP 200  detections=29  size=801x686
+    {"bbox": [4.783123183250427, 81.90739660263061, 96.60053715705871, 114.29213647842407], "det_confidence": 0.852, "class": "mycobacteriosis", "class_confidence": 0.842, "uncertain": false}
+    {"bbox": [0.0, 294.1356227874756, 62.36236975193024, 330.33336067199707], "det_confidence": 0.851, "class": "mycobacteriosis", "class_confidence": 0.831, "uncertain": false}
+--- limiter
+62 x POST /analyze  body {}
+  statuses: 60 x 400, then 2 x 429
+  first refusal: {"detail":{"error":"Too many requests","retry_after":59,"limit":60,"window":60}}
+
+##### C. After: a lower limit set by the environment (RATE_LIMIT_REQUESTS=3, `limiter --limit 3`)
+
+--- limiter
+5 x POST /analyze  body {}
+  statuses: 3 x 400, then 2 x 429
+  first refusal: {"detail":{"error":"Too many requests","retry_after":59,"limit":3,"window":60}}

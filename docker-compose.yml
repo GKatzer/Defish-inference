@@ -1,0 +1,28 @@
+# docker-compose.yml
+services:
+  ml-service:
+    build: .
+    container_name: ml-inference-service
+    restart: unless-stopped
+    ports:
+      - "${TAILSCALE_IP}:${ML_PORT}:8000"
+    volumes:
+      - .:/app
+      - ./models:/app/models
+      - ./temp:/app/temp
+      - ./logs:/app/logs
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - TZ=Europe/Moscow
+      - VDS1_URL=http://${vds1_ip}:${vds1_port}
+    networks:
+      - ml-network
+  
+networks:
+  ml-network:
+    driver: bridge
+
+volumes:
+  redis_data:
